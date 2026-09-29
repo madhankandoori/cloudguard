@@ -1,0 +1,12 @@
+{
+  "name": "cloudguard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A beginner-friendly cloud cost and waste dashboard.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

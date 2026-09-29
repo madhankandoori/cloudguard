@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CloudGuard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">CLOUD COST & WASTE ADVISOR</p>
+          <h1>CloudGuard</h1>
+          <p class="subtitle">Find cloud resources that may be costing more than they should.</p>
+        </div>
+        <span class="badge">Demo mode</span>
+      </header>
+
+      <section class="cards" aria-label="Cloud summary">
+        <article><p>Resources checked</p><strong id="resource-count">—</strong></article>
+        <article><p>Total monthly cost</p><strong id="total-monthly-cost">—</strong></article>
+        <article><p>Need review</p><strong id="review-count">—</strong></article>
+        <article><p>Possible monthly saving</p><strong id="possible-savings">—</strong></article>
+      </section>
+
+      <section class="panel budget-panel" aria-labelledby="budget-title">
+        <div><h2 id="budget-title">Budget status</h2><p id="budget-status" aria-live="polite">Loading budget…</p></div>
+      </section>
+
+      <section class="panel" aria-labelledby="recommendations-title">
+        <div class="panel-heading"><div><h2 id="recommendations-title">Smart recommendations</h2><p>Simple actions for resources that need review.</p></div></div>
+        <ul id="recommendations" class="recommendations" aria-live="polite"></ul>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading"><div><h2>Limits and budget</h2><p>Choose when a resource needs review and your total monthly budget.</p></div></div>
+        <form id="settings-form" class="settings-form">
+          <label>Monthly warning limit<input id="review-limit" name="reviewLimit" type="number" min="0" step="1" required /></label>
+          <label>Monthly budget<input id="monthly-budget" name="monthlyBudget" type="number" min="0" step="1" required /></label>
+          <label>Currency<select id="currency" name="currency"><option value="USD">USD — US Dollar ($)</option><option value="GBP">GBP — British Pound (£)</option><option value="EUR">EUR — Euro (€)</option></select></label>
+          <button type="submit">Save limit</button>
+          <p id="settings-message" class="form-message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="cost-chart-title">
+        <div class="panel-heading"><div><h2 id="cost-chart-title">Monthly cost chart</h2><p>Compare the monthly cost of your saved resources.</p></div></div>
+        <div id="cost-chart" class="cost-chart" aria-live="polite"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading"><div><h2>Add a resource</h2><p>Try adding a server, database, or storage folder.</p></div></div>
+        <form id="resource-form">
+          <label>Name<input name="name" placeholder="My test server" required /></label>
+          <label>Service type<input name="type" placeholder="EC2 virtual machine" required /></label>
+          <label>Region<input name="region" placeholder="eu-west-2" required /></label>
+          <label>Monthly cost (USD)<input name="monthlyCost" type="number" min="0" step="0.01" placeholder="10.00" required /></label>
+          <button type="submit">Add resource</button>
+          <p id="form-message" class="form-message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div><h2>Resource review</h2><p>Sample data for the first version of the project.</p></div>
+          <div class="review-controls"><input id="search-input" type="search" placeholder="Search resources…" aria-label="Search resources" /><div class="filter-buttons" aria-label="Filter resources by status"><button class="filter-button active" data-status="All" type="button" aria-pressed="true">All</button><button class="filter-button" data-status="Healthy" type="button" aria-pressed="false">Healthy</button><button class="filter-button" data-status="Needs review" type="button" aria-pressed="false">Needs review</button></div><button id="download-button">Download report</button><button id="refresh-button">Refresh</button></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Service</th><th>Region</th><th>Monthly cost</th><th>Status</th><th>Why?</th><th>Action</th></tr></thead>
+            <tbody id="resource-table"><tr><td colspan="6">Loading resources…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
