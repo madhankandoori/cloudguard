@@ -1,205 +1,45 @@
-let currency = "USD";
-let money = new Intl.NumberFormat("en-GB", { style: "currency", currency });
-let allResources = [];
-let statusFilter = "All";
+let db, user, currency = "USD", money = new Intl.NumberFormat("en-GB", { style: "currency", currency });
+let resources = [], settings = { reviewLimit: 20, monthlyBudget: 100, currency: "USD" }, statusFilter = "All";
+const $ = selector => document.querySelector(selector);
+const esc = value => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]));
 
-function setCurrency(newCurrency) {
-  currency = newCurrency;
-  money = new Intl.NumberFormat("en-GB", { style: "currency", currency });
-}
+function setCurrency(value) { currency = value; money = new Intl.NumberFormat("en-GB", { style: "currency" , currency }); }
+function review(resource) { const needs = resource.monthlyCost > settings.reviewLimit; return {...resource, status: needs ? "Needs review" : "Healthy", reason: needs ? `Monthly cost is above the ${money.format(settings.reviewLimit)} review limit` : `Monthly cost is within the ${money.format(settings.reviewLimit)} review limit`}; }
+function summary() { const list = resources.map(review), bad = list.filter(x => x.status !== "Healthy"); return { total: list.reduce((n,x)=>n+x.monthlyCost,0), bad, list }; }
+function recommendation(resource) { const t=resource.type.toLowerCase(); return t.includes("server")||t.includes("ec2") ? "Check whether it can be stopped outside working hours or changed to a smaller size." : t.includes("storage")||t.includes("s3") ? "Check old files and use lower-cost storage for backups." : "Check whether this resource can be reduced or removed."; }
 
-async function loadDashboard() {
-  const [summaryResponse, resourcesResponse, settingsResponse] = await Promise.all([
-    fetch("/api/summary"),
-    fetch("/api/resources"),
-    fetch("/api/settings")
-  ]);
-  const summary = await summaryResponse.json();
-  allResources = await resourcesResponse.json();
-  const settings = await settingsResponse.json();
-  setCurrency(settings.currency);
-
-  document.querySelector("#resource-count").textContent = summary.resourceCount;
-  document.querySelector("#total-monthly-cost").textContent = money.format(summary.totalMonthlyCost);
-  document.querySelector("#review-count").textContent = summary.reviewCount;
-  document.querySelector("#possible-savings").textContent = money.format(summary.possibleSavings);
-  document.querySelector("#review-limit").value = settings.reviewLimit;
-  document.querySelector("#monthly-budget").value = settings.monthlyBudget;
-  document.querySelector("#currency").value = settings.currency;
-  renderBudgetStatus(summary.totalMonthlyCost, settings.monthlyBudget);
-  renderRecommendations(summary.recommendations);
-  renderCostChart();
-  renderResources();
-}
-
-function renderRecommendations(recommendations) {
-  const list = document.querySelector("#recommendations");
-  list.innerHTML = "";
-  if (recommendations.length === 0) {
-    const item = document.createElement("li");
-    item.textContent = "Everything looks healthy. No recommendations right now.";
-    list.append(item);
-    return;
-  }
-  recommendations.forEach(({ name, recommendation }) => {
-    const item = document.createElement("li");
-    const resourceName = document.createElement("strong");
-    resourceName.textContent = `${name}: `;
-    item.append(resourceName, recommendation);
-    list.append(item);
-  });
-}
-
-function renderBudgetStatus(totalMonthlyCost, monthlyBudget) {
-  const status = document.querySelector("#budget-status");
-  const difference = monthlyBudget - totalMonthlyCost;
-  if (difference >= 0) {
-    status.textContent = `You are ${money.format(difference)} under your ${money.format(monthlyBudget)} monthly budget.`;
+async function load() {
+  if (db) {
+    const [rs, ss] = await Promise.all([db.from("resources").select("id,name,service_type,region,monthly_cost").order("created_at",{ascending:false}), db.from("user_settings").select("review_limit,monthly_budget,currency").maybeSingle()]);
+    if (rs.error) throw rs.error; if (ss.error) throw ss.error;
+    resources = rs.data.map(x=>({id:x.id,name:x.name,type:x.service_type,region:x.region,monthlyCost:Number(x.monthly_cost)}));
+    if (ss.data) settings={reviewLimit:Number(ss.data.review_limit),monthlyBudget:Number(ss.data.monthly_budget),currency:ss.data.currency};
   } else {
-    status.textContent = `You are ${money.format(Math.abs(difference))} over your ${money.format(monthlyBudget)} monthly budget.`;
+    const [r,s] = await Promise.all([fetch("/api/resources").then(x=>x.json()),fetch("/api/settings").then(x=>x.json())]);
+    resources=r; settings={reviewLimit:s.reviewLimit,monthlyBudget:s.monthlyBudget,currency:s.currency};
   }
+  render();
 }
-
-function renderCostChart() {
-  const chart = document.querySelector("#cost-chart");
-  if (allResources.length === 0) {
-    chart.innerHTML = "<p>Add a resource to see its cost here.</p>";
-    return;
-  }
-  const highestCost = Math.max(...allResources.map(resource => resource.monthlyCost), 1);
-  chart.innerHTML = allResources.map(resource => {
-    const width = (resource.monthlyCost / highestCost) * 100;
-    return `<div class="cost-row">
-      <div class="cost-label"><span>${resource.name}</span><strong>${money.format(resource.monthlyCost)}</strong></div>
-      <div class="cost-track" role="progressbar" aria-label="${resource.name} monthly cost" aria-valuemin="0" aria-valuemax="${highestCost}" aria-valuenow="${resource.monthlyCost}">
-        <div class="cost-bar ${resource.status === "Healthy" ? "healthy-bar" : "review-bar"}" style="width: ${width}%"></div>
-      </div>
-    </div>`;
-  }).join("");
+function render() {
+  setCurrency(settings.currency); const s=summary();
+  $("#resource-count").textContent=resources.length; $("#total-monthly-cost").textContent=money.format(s.total); $("#review-count").textContent=s.bad.length; $("#possible-savings").textContent=money.format(s.bad.reduce((n,x)=>n+x.monthlyCost,0));
+  $("#review-limit").value=settings.reviewLimit; $("#monthly-budget").value=settings.monthlyBudget; $("#currency").value=settings.currency;
+  const difference=settings.monthlyBudget-s.total; $("#budget-status").textContent=`You are ${money.format(Math.abs(difference))} ${difference>=0?"under":"over"} your ${money.format(settings.monthlyBudget)} monthly budget.`;
+  $("#recommendations").innerHTML=s.bad.length?s.bad.map(x=>`<li><strong>${esc(x.name)}:</strong> ${recommendation(x)}</li>`).join(""):"<li>Everything looks healthy. No recommendations right now.</li>";
+  const max=Math.max(...resources.map(x=>x.monthlyCost),1); $("#cost-chart").innerHTML=resources.length?resources.map(x=>`<div class="cost-row"><div class="cost-label"><span>${esc(x.name)}</span><strong>${money.format(x.monthlyCost)}</strong></div><div class="cost-track"><div class="cost-bar ${review(x).status==="Healthy"?"healthy-bar":"review-bar"}" style="width:${x.monthlyCost/max*100}%"></div></div></div>`).join(""):"<p>Add a resource to see its cost here.</p>";
+  const term=$("#search-input").value.toLowerCase(); const shown=s.list.filter(x=>(statusFilter==="All"||x.status===statusFilter)&&Object.values(x).join(" ").toLowerCase().includes(term));
+  $("#resource-table").innerHTML=shown.length?shown.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.type)}</td><td>${esc(x.region)}</td><td>${money.format(x.monthlyCost)}</td><td><span class="status ${x.status==="Healthy"?"healthy":"review"}">${x.status}</span></td><td>${esc(x.reason)}</td><td><button class="edit-button" data-id="${x.id}">Edit</button> <button class="delete-button" data-id="${x.id}">Delete</button></td></tr>`).join(""):`<tr><td colspan="7">No resources match your search.</td></tr>`;
+  document.querySelectorAll(".delete-button").forEach(b=>b.onclick=()=>remove(b.dataset.id)); document.querySelectorAll(".edit-button").forEach(b=>b.onclick=()=>edit(b.dataset.id));
 }
-
-function renderResources() {
-  const searchText = document.querySelector("#search-input").value.toLowerCase().trim();
-  const resources = allResources.filter(resource => {
-    const matchesSearch = Object.values(resource).join(" ").toLowerCase().includes(searchText);
-    const matchesStatus = statusFilter === "All" || resource.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-  const table = document.querySelector("#resource-table");
-  if (resources.length === 0) {
-    table.innerHTML = `<tr><td colspan="7">No resources match your search.</td></tr>`;
-    return;
-  }
-  table.innerHTML = resources.map(resource => `
-    <tr>
-      <td><strong>${resource.name}</strong><br><small>${resource.id}</small></td>
-      <td>${resource.type}</td><td>${resource.region}</td><td>${money.format(resource.monthlyCost)}</td>
-      <td><span class="status ${resource.status === "Healthy" ? "healthy" : "review"}">${resource.status}</span></td>
-      <td>${resource.reason}</td>
-      <td><div class="row-actions"><button class="edit-button" data-id="${resource.id}">Edit</button><button class="delete-button" data-id="${resource.id}" data-name="${resource.name}">Delete</button></div></td>
-    </tr>`).join("");
-
-  document.querySelectorAll(".delete-button").forEach(button => {
-    button.addEventListener("click", () => deleteResource(button.dataset.id, button.dataset.name));
-  });
-  document.querySelectorAll(".edit-button").forEach(button => {
-    button.addEventListener("click", () => editResource(button.dataset.id));
-  });
-}
-
-async function editResource(id) {
-  const resource = allResources.find(item => item.id === id);
-  const name = prompt("Resource name", resource.name);
-  if (name === null) return;
-  const type = prompt("Service type", resource.type);
-  if (type === null) return;
-  const region = prompt("Region", resource.region);
-  if (region === null) return;
-  const monthlyCost = prompt("Monthly cost (USD)", resource.monthlyCost);
-  if (monthlyCost === null) return;
-  const response = await fetch(`/api/resources/${encodeURIComponent(id)}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, type, region, monthlyCost })
-  });
-  const result = await response.json();
-  if (!response.ok) return alert(result.error);
-  await loadDashboard();
-}
-
-async function deleteResource(id, name) {
-  if (!confirm(`Delete ${name}?`)) return;
-  const response = await fetch(`/api/resources/${encodeURIComponent(id)}`, { method: "DELETE" });
-  const result = await response.json();
-  if (!response.ok) return alert(result.error);
-  await loadDashboard();
-}
-
-document.querySelector("#refresh-button").addEventListener("click", loadDashboard);
-document.querySelector("#search-input").addEventListener("input", renderResources);
-document.querySelectorAll(".filter-button").forEach(button => {
-  button.addEventListener("click", () => {
-    statusFilter = button.dataset.status;
-    document.querySelectorAll(".filter-button").forEach(item => {
-      const selected = item === button;
-      item.classList.toggle("active", selected);
-      item.setAttribute("aria-pressed", selected);
-    });
-    renderResources();
-  });
-});
-document.querySelector("#download-button").addEventListener("click", downloadReport);
-
-function downloadReport() {
-  const headings = ["Name", "Service type", "Region", `Monthly cost (${currency})`, "Status", "Reason"];
-  const rows = allResources.map(resource => [resource.name, resource.type, resource.region, resource.monthlyCost, resource.status, resource.reason]);
-  const csvValue = value => `"${String(value).replaceAll('"', '""')}"`;
-  const report = [headings, ...rows].map(row => row.map(csvValue).join(",")).join("\n");
-  const file = new Blob([report], { type: "text/csv;charset=utf-8" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(file);
-  link.download = "cloudguard-report.csv";
-  link.click();
-  URL.revokeObjectURL(link.href);
-}
-document.querySelector("#settings-form").addEventListener("submit", async event => {
-  event.preventDefault();
-  const message = document.querySelector("#settings-message");
-  const input = Object.fromEntries(new FormData(event.currentTarget));
-  try {
-    const response = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input)
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error);
-    message.textContent = `Settings saved: ${result.currency}, review limit ${money.format(result.reviewLimit)}, budget ${money.format(result.monthlyBudget)}.`;
-    await loadDashboard();
-  } catch (error) {
-    message.textContent = error.message;
-  }
-});
-document.querySelector("#resource-form").addEventListener("submit", async event => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const message = document.querySelector("#form-message");
-  const input = Object.fromEntries(new FormData(form));
-  try {
-    const response = await fetch("/api/resources", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input)
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error);
-    form.reset();
-    message.textContent = `Added ${result.name}.`;
-    await loadDashboard();
-  } catch (error) {
-    message.textContent = error.message;
-  }
-});
-loadDashboard().catch(error => {
-  document.querySelector("#resource-table").innerHTML = `<tr><td colspan="6">Could not load data: ${error.message}</td></tr>`;
-});
+async function insert(values) { if(db) return db.from("resources").insert({user_id:user.id,name:values.name,service_type:values.type,region:values.region,monthly_cost:Number(values.monthlyCost)}); const res=await fetch("/api/resources",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(values)}); return {error:res.ok?null:new Error("Could not add resource")}; }
+async function remove(id) { if(!confirm("Delete this resource?"))return; const result=db?await db.from("resources").delete().eq("id",id):await fetch(`/api/resources/${id}`,{method:"DELETE"}); if(result.error)alert(result.error.message); await load(); }
+async function edit(id) { const r=resources.find(x=>x.id===id),name=prompt("Resource name",r.name),type=prompt("Service type",r.type),region=prompt("Region",r.region),monthlyCost=prompt("Monthly cost",r.monthlyCost); if([name,type,region,monthlyCost].includes(null))return; if(db){const {error}=await db.from("resources").update({name,service_type:type,region,monthly_cost:Number(monthlyCost)}).eq("id",id);if(error)alert(error.message);} else { const response=await fetch(`/api/resources/${id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,type,region,monthlyCost:Number(monthlyCost)})}); if(!response.ok)alert("Could not update the resource."); } await load(); }
+async function saveSettings(e) { e.preventDefault(); const v=Object.fromEntries(new FormData(e.currentTarget)); settings={reviewLimit:Number(v.reviewLimit),monthlyBudget:Number(v.monthlyBudget),currency:v.currency}; if(db){const {error}=await db.from("user_settings").upsert({user_id:user.id,review_limit:settings.reviewLimit,monthly_budget:settings.monthlyBudget,currency:settings.currency});if(error)$("#settings-message").textContent=error.message;} else await fetch("/api/settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(v)}); await load(); }
+async function init() { const config=await fetch("/api/config").then(x=>x.json()); if(!config.supabaseUrl||!config.supabaseAnonKey){$("#app-screen").hidden=false;return load();} db=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey); const {data}=await db.auth.getSession(); await session(data.session); db.auth.onAuthStateChange((_e,s)=>session(s)); }
+async function session(s) { user=s?.user; if(!user){$("#app-screen").hidden=true;$("#auth-screen").hidden=false;return;} $("#auth-screen").hidden=true;$("#app-screen").hidden=false;$("#account-email").textContent=user.email;$("#sign-out-button").hidden=false;await load(); }
+$("#auth-form").onsubmit=async e=>{e.preventDefault();const {error}=await db.auth.signInWithPassword({email:$("#auth-email").value,password:$("#auth-password").value});$("#auth-message").textContent=error?.message||"Signed in.";};
+$("#sign-up-button").onclick=async()=>{const {error}=await db.auth.signUp({email:$("#auth-email").value,password:$("#auth-password").value});$("#auth-message").textContent=error?.message||"Check your email to confirm your account.";};
+$("#sign-out-button").onclick=()=>db.auth.signOut(); $("#settings-form").onsubmit=saveSettings; $("#resource-form").onsubmit=async e=>{e.preventDefault();const {error}=await insert(Object.fromEntries(new FormData(e.currentTarget)));$("#form-message").textContent=error?.message||"Resource added.";if(!error){e.currentTarget.reset();await load();}}; $("#search-input").oninput=render; $("#refresh-button").onclick=load;
+document.querySelectorAll(".filter-button").forEach(b=>b.onclick=()=>{statusFilter=b.dataset.status;document.querySelectorAll(".filter-button").forEach(x=>x.classList.toggle("active",x===b));render();});
+$("#download-button").onclick=()=>{const lines=[["Name","Service","Region","Monthly cost"],...resources.map(x=>[x.name,x.type,x.region,x.monthlyCost])].map(x=>x.map(y=>`"${String(y).replaceAll('"','""')}"`).join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([lines],{type:"text/csv"}));a.download="cloudguard-report.csv";a.click();};
+init().catch(error=>{$("#auth-message").textContent=error.message;$("#auth-screen").hidden=false;});

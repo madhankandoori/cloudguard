@@ -7,14 +7,27 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main>
+    <section id="auth-screen" class="auth-screen" hidden>
+      <div class="auth-card">
+        <p class="eyebrow">WELCOME TO CLOUDGUARD</p>
+        <h1>Track your cloud costs.</h1>
+        <p class="subtitle">Create a free account to keep your resources private and saved online.</p>
+        <form id="auth-form">
+          <label>Email<input id="auth-email" type="email" required autocomplete="email" /></label>
+          <label>Password<input id="auth-password" type="password" required minlength="6" autocomplete="current-password" /></label>
+          <div class="auth-actions"><button type="submit">Sign in</button><button id="sign-up-button" type="button" class="secondary-button">Create account</button></div>
+          <p id="auth-message" class="form-message" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+    <main id="app-screen" hidden>
       <header>
         <div>
           <p class="eyebrow">CLOUD COST & WASTE ADVISOR</p>
           <h1>CloudGuard</h1>
           <p class="subtitle">Find cloud resources that may be costing more than they should.</p>
         </div>
-        <span class="badge">Demo mode</span>
+        <div class="account-controls"><span id="account-email" class="badge">Demo mode</span><button id="sign-out-button" class="secondary-button" type="button" hidden>Sign out</button></div>
       </header>
 
       <section class="cards" aria-label="Cloud summary">
@@ -74,6 +87,7 @@
         </div>
       </section>
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/app.js"></script>
   </body>
 </html>
