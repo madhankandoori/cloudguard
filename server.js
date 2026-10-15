@@ -3,7 +3,9 @@ const fs = require("fs");
 const path = require("path");
 
 const PORT = process.env.PORT || 3000;
-const publicFolder = path.join(__dirname, "public");
+const publicFolder = fs.existsSync(path.join(__dirname, "public"))
+  ? path.join(__dirname, "public")
+  : __dirname;
 const dataFolder = path.join(__dirname, "data");
 const resourcesFile = path.join(dataFolder, "resources.json");
 const settingsFile = path.join(dataFolder, "settings.json");
