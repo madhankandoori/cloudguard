@@ -91,7 +91,13 @@ function serveFile(response, filename, contentType) {
   });
 }
 
-http.createServer((request, response) => {
+http.createServer((request, response) => 
+  {   if (request.url === "/api/config") {
+    return sendJson(response, {
+      supabaseUrl: process.env.SUPABASE_URL || null,
+      supabaseAnonKey: process.env.SUPABASE_ANON_KEY || null
+    });
+  }
   if (request.url === "/api/settings" && request.method === "GET") return sendJson(response, settings);
   if (request.url === "/api/settings" && request.method === "PUT") {
     let body = "";
