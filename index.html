@@ -81,6 +81,7 @@
           <label>Region<input name="region" placeholder="eu-west-2" required /></label>
           <label>Project<input name="project" placeholder="Website project" /></label>
           <label>Environment<select name="environment"><option>Production</option><option>Development</option><option>Testing</option></select></label>
+          <label>Cloud provider<select name="provider"><option value="AWS">AWS</option><option value="Azure">Microsoft Azure</option><option value="Google Cloud">Google Cloud</option><option value="Other">Other</option></select></label>
           <label>Monthly cost (USD)<input name="monthlyCost" type="number" min="0" step="0.01" placeholder="10.00" required /></label>
           <button type="submit">Add resource</button>
           <p id="form-message" class="form-message" aria-live="polite"></p>
@@ -98,7 +99,7 @@
       </section>
 
       <section class="panel">
-        <div class="panel-heading"><div><h2>Import resources from CSV</h2><p>Required columns: Name, Service type, Region, Monthly cost. Optional: Project, Environment.</p></div></div>
+        <div class="panel-heading"><div><h2>Import resources from CSV</h2><p>Required columns: Name, Service type, Region, Monthly cost. Optional: Project, Environment, Cloud provider.</p></div></div>
         <form id="csv-import-form" class="csv-form">
           <label>CSV file<input id="csv-file" type="file" accept=".csv,text/csv" required /></label>
           <button type="submit">Import resources</button>
@@ -113,8 +114,8 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Name</th><th>Project</th><th>Environment</th><th>Service</th><th>Region</th><th>Monthly cost</th><th>Status</th><th>Why?</th><th>Action</th></tr></thead>
-            <tbody id="resource-table"><tr><td colspan="9">Loading resources…</td></tr></tbody>
+            <thead><tr><th>Name</th><th>Project</th><th>Environment</th><th>Provider</th><th>Service</th><th>Region</th><th>Monthly cost</th><th>Status</th><th>Why?</th><th>Action</th></tr></thead>
+            <tbody id="resource-table"><tr><td colspan="10">Loading resources…</td></tr></tbody>
           </table>
         </div>
       </section>
