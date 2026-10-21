@@ -15,7 +15,7 @@
         <form id="auth-form">
           <label>Email<input id="auth-email" type="email" required autocomplete="email" /></label>
           <label>Password<input id="auth-password" type="password" required minlength="6" autocomplete="current-password" /></label>
-          <div class="auth-actions"><button type="submit">Sign in</button><button id="sign-up-button" type="button" class="secondary-button">Create account</button></div>
+          <div class="auth-actions"><button type="submit">Sign in</button><button id="sign-up-button" type="button" class="secondary-button">Create account</button><button id="reset-button" type="button" class="secondary-button">Forgot password?</button></div>
           <p id="auth-message" class="form-message" aria-live="polite"></p>
         </form>
       </div>
@@ -71,6 +71,15 @@
           <label>Monthly cost (USD)<input name="monthlyCost" type="number" min="0" step="0.01" placeholder="10.00" required /></label>
           <button type="submit">Add resource</button>
           <p id="form-message" class="form-message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading"><div><h2>Import resources from CSV</h2><p>Upload a spreadsheet with columns: Name, Service type, Region, Monthly cost.</p></div></div>
+        <form id="csv-import-form" class="csv-form">
+          <label>CSV file<input id="csv-file" type="file" accept=".csv,text/csv" required /></label>
+          <button type="submit">Import resources</button>
+          <p id="csv-message" class="form-message" aria-live="polite"></p>
         </form>
       </section>
 
