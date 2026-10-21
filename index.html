@@ -41,6 +41,15 @@
         <div><h2 id="budget-title">Budget status</h2><p id="budget-status" aria-live="polite">Loading budget…</p></div>
       </section>
 
+      <section id="budget-alert" class="panel budget-alert" hidden aria-live="assertive">
+        <div>
+          <p class="eyebrow">BUDGET ALERT</p>
+          <h2>Monthly budget exceeded</h2>
+          <p id="budget-alert-message"></p>
+        </div>
+        <button id="alert-settings-button" type="button" class="secondary-button">Review budget</button>
+      </section>
+
       <section class="panel" aria-labelledby="recommendations-title">
         <div class="panel-heading"><div><h2 id="recommendations-title">Smart recommendations</h2><p>Simple actions for resources that need review.</p></div></div>
         <ul id="recommendations" class="recommendations" aria-live="polite"></ul>
