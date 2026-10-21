@@ -39,6 +39,8 @@
 
       <section class="panel budget-panel" aria-labelledby="budget-title">
         <div><h2 id="budget-title">Budget status</h2><p id="budget-status" aria-live="polite">Loading budget…</p></div>
+        <div class="budget-progress" role="progressbar" aria-label="Monthly budget used" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="budget-progress-fill" class="budget-progress-fill"></div></div>
+        <p id="budget-progress-label" class="budget-progress-label"></p>
       </section>
 
       <section id="budget-alert" class="panel budget-alert" hidden aria-live="assertive">
